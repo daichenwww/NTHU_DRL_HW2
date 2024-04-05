@@ -8,53 +8,53 @@ import numpy as np
 import random
 import os
 
-class SkipFrame(gym.Wrapper):
-    def __init__(self, env, skip=4):
-        super().__init__(env)
-        self._skip = skip
+# class SkipFrame(gym.Wrapper):
+#     def __init__(self, env, skip=4):
+#         super().__init__(env)
+#         self._skip = skip
 
-    def step(self, action):
-        total_reward = 0.0
-        done = False
-        for i in range(self._skip):
-            obs, reward, done, info = self.env.step(action)
-            total_reward += reward
-            if done:
-                break
-        return obs, total_reward, done, info
-
-
-class GrayScale(gym.ObservationWrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        obs_shape = self.observation_space.shape[:2]
-        self.observation_space = gym.spaces.Box(
-            low=0, high=255, shape=obs_shape, dtype=np.uint8)
-
-    def permute_orientation(self, observation):
-        observation = np.dot(observation[..., :3], [0.299, 0.587, 0.114])
-        return observation
-
-    def observation(self, observation):
-        return self.permute_orientation(observation)
+#     def step(self, action):
+#         total_reward = 0.0
+#         done = False
+#         for i in range(self._skip):
+#             obs, reward, done, info = self.env.step(action)
+#             total_reward += reward
+#             if done:
+#                 break
+#         return obs, total_reward, done, info
 
 
-class ResizeObservation(gym.ObservationWrapper):
-    def __init__(self, env, shape=84):
-        super().__init__(env)
-        if isinstance(shape, int):
-            self.shape = (shape, shape)
-        else:
-            self.shape = tuple(shape)
+# class GrayScale(gym.ObservationWrapper):
+#     def __init__(self, env):
+#         super().__init__(env)
+#         obs_shape = self.observation_space.shape[:2]
+#         self.observation_space = gym.spaces.Box(
+#             low=0, high=255, shape=obs_shape, dtype=np.uint8)
 
-        obs_shape = self.shape + self.observation_space.shape[2:]
-        self.observation_space = gym.spaces.Box(
-            low=0, high=255, shape=obs_shape, dtype=np.uint8)
+#     def permute_orientation(self, observation):
+#         observation = np.dot(observation[..., :3], [0.299, 0.587, 0.114])
+#         return observation
 
-    def observation(self, observation):
-        observation = cv2.resize(
-            observation, self.shape, interpolation=cv2.INTER_AREA)
-        return observation
+#     def observation(self, observation):
+#         return self.permute_orientation(observation)
+
+
+# class ResizeObservation(gym.ObservationWrapper):
+#     def __init__(self, env, shape=84):
+#         super().__init__(env)
+#         if isinstance(shape, int):
+#             self.shape = (shape, shape)
+#         else:
+#             self.shape = tuple(shape)
+
+#         obs_shape = self.shape + self.observation_space.shape[2:]
+#         self.observation_space = gym.spaces.Box(
+#             low=0, high=255, shape=obs_shape, dtype=np.uint8)
+
+#     def observation(self, observation):
+#         observation = cv2.resize(
+#             observation, self.shape, interpolation=cv2.INTER_AREA)
+#         return observation
 
 
 # env = gym_super_mario_bros.make('SuperMarioBros-v0')
@@ -126,17 +126,17 @@ class Agent(object):
             q_values = self.learning_Q(self.state_stack.unsqueeze(0))
             return torch.max(q_values, 1)[1].data.cpu().numpy()[0]
 
-agent = Agent()
-done = False
-state = env.reset()
-total_reward = 0
-while True:
-    if done:
-        break
-    action = agent.act(state)
-    state, reward, done, info = env.step(action)
-    total_reward += reward
-    env.render()
+# agent = Agent()
+# done = False
+# state = env.reset()
+# total_reward = 0
+# while True:
+#     if done:
+#         break
+#     action = agent.act(state)
+#     state, reward, done, info = env.step(action)
+#     total_reward += reward
+#     env.render()
 
-print('Total Reward:', total_reward)
-env.close()
+# print('Total Reward:', total_reward)
+# env.close()
