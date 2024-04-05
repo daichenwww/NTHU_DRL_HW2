@@ -110,7 +110,7 @@ class Agent(object):
     def __init__(self):
         # load model state dict as cpu mode
         self.learning_Q = DQN().to('cpu')
-        self.learning_Q.load_state_dict(torch.load(os.getcwd() + '/109062114_hw2_data_1000', map_location='cpu'))
+        self.learning_Q.load_state_dict(torch.load(os.getcwd() + '/109062114_hw2_data', map_location='cpu'))
         self.learning_Q.eval()
         self.state_stack = None # 4x84x84
 
