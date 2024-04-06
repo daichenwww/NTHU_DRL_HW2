@@ -8,72 +8,6 @@ import numpy as np
 import random
 import os
 
-# class SkipFrame(gym.Wrapper):
-#     def __init__(self, env, skip=4):
-#         super().__init__(env)
-#         self._skip = skip
-
-#     def step(self, action):
-#         total_reward = 0.0
-#         done = False
-#         for i in range(self._skip):
-#             obs, reward, done, info = self.env.step(action)
-#             total_reward += reward
-#             if done:
-#                 break
-#         return obs, total_reward, done, info
-
-
-# class GrayScale(gym.ObservationWrapper):
-#     def __init__(self, env):
-#         super().__init__(env)
-#         obs_shape = self.observation_space.shape[:2]
-#         self.observation_space = gym.spaces.Box(
-#             low=0, high=255, shape=obs_shape, dtype=np.uint8)
-
-#     def permute_orientation(self, observation):
-#         observation = np.dot(observation[..., :3], [0.299, 0.587, 0.114])
-#         return observation
-
-#     def observation(self, observation):
-#         return self.permute_orientation(observation)
-
-
-# class ResizeObservation(gym.ObservationWrapper):
-#     def __init__(self, env, shape=84):
-#         super().__init__(env)
-#         if isinstance(shape, int):
-#             self.shape = (shape, shape)
-#         else:
-#             self.shape = tuple(shape)
-
-#         obs_shape = self.shape + self.observation_space.shape[2:]
-#         self.observation_space = gym.spaces.Box(
-#             low=0, high=255, shape=obs_shape, dtype=np.uint8)
-
-#     def observation(self, observation):
-#         observation = cv2.resize(
-#             observation, self.shape, interpolation=cv2.INTER_AREA)
-#         return observation
-
-
-# env = gym_super_mario_bros.make('SuperMarioBros-v0')
-# env = JoypadSpace(env, COMPLEX_MOVEMENT)
-# env = SkipFrame(env)
-# env = GrayScale(env)
-# env = ResizeObservation(env, shape=84)
-# env = gym.wrappers.FrameStack(env, num_stack=4)
-# done = False
-# state = env.reset()
-# while True:
-#     if done:
-#         break
-#     action = random.choice([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11])
-#     state, reward, done, info = env.step(action)
-#     print(state.shape) # (4, 84, 84)
-#     print(state)
-#     exit()
-
 env = gym_super_mario_bros.make('SuperMarioBros-v0')
 env = JoypadSpace(env, COMPLEX_MOVEMENT)
 
@@ -104,12 +38,44 @@ class DQN(torch.nn.Module):
 
     def forward(self, x):
         return self.net(x)
-    
+
+class DuelingDQN(torch.nn.Module):
+    def __init__(self, input_channels=4, num_actions=12):
+        super().__init__()
+        self.net = torch.nn.Sequential(
+            torch.nn.Conv2d(input_channels, 32, kernel_size=8, stride=4),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            torch.nn.ReLU(),
+        )
+
+        self.advantage = torch.nn.Sequential(
+            torch.nn.Linear(7 * 7 * 64, 256),
+            torch.nn.ReLU(),
+            torch.nn.Linear(256, num_actions)
+        )
+
+        self.value = torch.nn.Sequential(
+            torch.nn.Linear(7 * 7 * 64, 256),
+            torch.nn.ReLU(),
+            torch.nn.Linear(256, 1)
+        )
+
+    def forward(self, x):
+        y = self.net(x)
+        y = y.view(y.size(0), -1)
+        advantage = self.advantage(y)
+        value = self.value(y)
+        adv_mean = advantage.mean(1, keepdim=True)
+        return value + advantage - adv_mean
+
 class Agent(object):
     """Agent that acts randomly."""
     def __init__(self):
         # load model state dict as cpu mode
-        self.learning_Q = DQN().to('cpu')
+        self.learning_Q = DuelingDQN().to('cpu')
         self.learning_Q.load_state_dict(torch.load(os.getcwd() + '/109062114_hw2_data', map_location='cpu'))
         self.learning_Q.eval()
         self.state_stack = None # 4x84x84
@@ -126,17 +92,17 @@ class Agent(object):
             q_values = self.learning_Q(self.state_stack.unsqueeze(0))
             return torch.max(q_values, 1)[1].data.cpu().numpy()[0]
 
-# agent = Agent()
-# done = False
-# state = env.reset()
-# total_reward = 0
-# while True:
-#     if done:
-#         break
-#     action = agent.act(state)
-#     state, reward, done, info = env.step(action)
-#     total_reward += reward
-#     env.render()
+agent = Agent()
+done = False
+state = env.reset()
+total_reward = 0
+while True:
+    if done:
+        break
+    action = agent.act(state)
+    state, reward, done, info = env.step(action)
+    total_reward += reward
+    env.render()
 
-# print('Total Reward:', total_reward)
-# env.close()
+print('Total Reward:', total_reward)
+env.close()
