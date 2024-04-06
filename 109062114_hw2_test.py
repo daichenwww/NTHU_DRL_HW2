@@ -13,7 +13,7 @@ env = JoypadSpace(env, COMPLEX_MOVEMENT)
 
 def frame_preprocessing(observation):
     observation = cv2.cvtColor(observation, cv2.COLOR_RGB2GRAY)
-    observation = cv2.resize(observation, (84, 84),
+    observation = cv2.resize(observation, (64, 64),
                              interpolation=cv2.INTER_AREA)
     observation = np.expand_dims(observation, axis=0)
     observation = torch.tensor(observation, dtype=torch.float32)
@@ -44,21 +44,24 @@ class DuelingDQN(torch.nn.Module):
         super().__init__()
         self.net = torch.nn.Sequential(
             torch.nn.Conv2d(input_channels, 32, kernel_size=8, stride=4),
+            torch.nn.BatchNorm2d(32),
             torch.nn.ReLU(),
             torch.nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            torch.nn.BatchNorm2d(64),
             torch.nn.ReLU(),
             torch.nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            torch.nn.BatchNorm2d(64),
             torch.nn.ReLU(),
         )
 
         self.advantage = torch.nn.Sequential(
-            torch.nn.Linear(7 * 7 * 64, 256),
+            torch.nn.Linear(4 * 4 * 64, 256),
             torch.nn.ReLU(),
             torch.nn.Linear(256, num_actions)
         )
 
         self.value = torch.nn.Sequential(
-            torch.nn.Linear(7 * 7 * 64, 256),
+            torch.nn.Linear(4 * 4 * 64, 256),
             torch.nn.ReLU(),
             torch.nn.Linear(256, 1)
         )
@@ -75,7 +78,7 @@ class Agent(object):
     """Agent that acts randomly."""
     def __init__(self):
         # load model state dict as cpu mode
-        self.learning_Q = DuelingDQN().to('cpu')
+        self.learning_Q = DuelingDQN(num_actions=2).to('cpu')
         self.learning_Q.load_state_dict(torch.load(os.getcwd() + '/109062114_hw2_data', map_location='cpu'))
         self.learning_Q.eval()
         self.state_stack = None # 4x84x84
@@ -90,7 +93,7 @@ class Agent(object):
             self.state_stack = torch.cat([self.state_stack[1:], observation], dim=0)
         with torch.no_grad():
             q_values = self.learning_Q(self.state_stack.unsqueeze(0))
-            return torch.max(q_values, 1)[1].data.cpu().numpy()[0]
+            return torch.max(q_values, 1)[1].data.cpu().numpy()[0] + 1
         
 if __name__ == '__main__':
     agent = Agent()
