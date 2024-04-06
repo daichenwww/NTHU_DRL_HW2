@@ -92,17 +92,17 @@ class Agent(object):
             q_values = self.learning_Q(self.state_stack.unsqueeze(0))
             return torch.max(q_values, 1)[1].data.cpu().numpy()[0]
 
-agent = Agent()
-done = False
-state = env.reset()
-total_reward = 0
-while True:
-    if done:
-        break
-    action = agent.act(state)
-    state, reward, done, info = env.step(action)
-    total_reward += reward
-    env.render()
+# agent = Agent()
+# done = False
+# state = env.reset()
+# total_reward = 0
+# while True:
+#     if done:
+#         break
+#     action = agent.act(state)
+#     state, reward, done, info = env.step(action)
+#     total_reward += reward
+#     env.render()
 
-print('Total Reward:', total_reward)
-env.close()
+# print('Total Reward:', total_reward)
+# env.close()
