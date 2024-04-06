@@ -92,9 +92,12 @@ class Agent(object):
             self.state_stack = torch.cat([self.state_stack] * 4, dim=0)
         else:
             self.state_stack = torch.cat([self.state_stack[1:], observation], dim=0)
-        with torch.no_grad():
-            q_values = self.learning_Q(self.state_stack.unsqueeze(0))
-            return torch.max(q_values, 1)[1].data.cpu().numpy()[0]
+        if random.random() < 0.1:
+            return random.randint(0, 11)
+        else:
+            with torch.no_grad():
+                q_values = self.learning_Q(self.state_stack.unsqueeze(0))
+                return torch.max(q_values, 1)[1].data.cpu().numpy()[0]
         
 if __name__ == '__main__':
     agent = Agent()
