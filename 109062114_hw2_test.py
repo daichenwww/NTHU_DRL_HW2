@@ -83,20 +83,36 @@ class Agent(object):
         self.learning_Q.load_state_dict(torch.load(os.getcwd() + '/109062114_hw2_data', map_location='cpu'))
         self.learning_Q.eval()
         self.state_stack = None # 4x84x84
+        self.last_action = 0
+        self.frame_skip = 0
+        self.time_count = 0
 
     def act(self, observation):
         # if state_stack is empty, fill it with the same frame
+        if self.time_count > 4000:
+            self.state_stack = None
+            self.frame_skip = 0
+            self.time_count = 0
+            self.last_action = 0
+            return 0
         observation = frame_preprocessing(observation) # 1x84x84
-        if self.state_stack is None: 
-            self.state_stack = observation
-            self.state_stack = torch.cat([self.state_stack] * 4, dim=0)
-        else:
-            self.state_stack = torch.cat([self.state_stack[1:], observation], dim=0)
-        if random.random() < 0.1:
-            return random.randint(0, 11)
+        if self.frame_skip % 4 == 0:
+            if self.state_stack is None: 
+                self.state_stack = observation
+                self.state_stack = torch.cat([self.state_stack] * 4, dim=0)
+            else:
+                self.state_stack = torch.cat([self.state_stack[1:], observation], dim=0)
+            self.last_action = self.choose_action(self.state_stack.unsqueeze(0))
+        self.frame_skip += 1
+        self.time_count += 1
+        return self.last_action
+            
+    def choose_action(self, state):
+        if random.random() < 0.01:
+            return random.choice([1, 2, 5, 6, 7 ])
         else:
             with torch.no_grad():
-                q_values = self.learning_Q(self.state_stack.unsqueeze(0))
+                q_values = self.learning_Q(state)
                 return torch.max(q_values, 1)[1].data.cpu().numpy()[0]
         
 if __name__ == '__main__':
@@ -109,6 +125,7 @@ if __name__ == '__main__':
             break
         action = agent.act(state)
         state, reward, done, info = env.step(action)
+        # print(info['x_pos'], info['y_pos'])
         total_reward += reward
         env.render()
 
