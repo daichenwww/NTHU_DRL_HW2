@@ -8,9 +8,6 @@ import numpy as np
 import random
 import os
 
-env = gym_super_mario_bros.make('SuperMarioBros-v0')
-env = JoypadSpace(env, COMPLEX_MOVEMENT)
-
 def frame_preprocessing(observation):
     observation = cv2.cvtColor(observation, cv2.COLOR_RGB2GRAY)
     observation = cv2.resize(observation, (84, 84), interpolation=cv2.INTER_AREA)
@@ -114,20 +111,28 @@ class Agent(object):
             with torch.no_grad():
                 q_values = self.learning_Q(state)
                 return torch.max(q_values, 1)[1].data.cpu().numpy()[0]
-        
+            
+import time
 if __name__ == '__main__':
     agent = Agent()
-    done = False
-    state = env.reset()
-    total_reward = 0
-    while True:
-        if done:
-            break
-        action = agent.act(state)
-        state, reward, done, info = env.step(action)
-        # print(info['x_pos'], info['y_pos'])
-        total_reward += reward
-        env.render()
-
-    print('Total Reward:', total_reward)
+    env = gym_super_mario_bros.make('SuperMarioBros-v0')
+    # env = gym.make('SuperMarioBrosRandomStages-v0', stages=[f'{w}-{s}' for w in range(1, 9) for s in range(1, 5)])
+    env = JoypadSpace(env, COMPLEX_MOVEMENT)
+    for _ in range(5):
+        state = env.reset()
+        last_x, last_y, last_life = 0, 0, 2
+        done = False
+        total_reward = 0
+        while True:
+            action = agent.act(state)
+            next_state, reward, done, info = env.step(action)
+            env.render()
+            total_reward += reward
+            if done or info['life'] < last_life:
+                print(f"Mario died at ({last_x}, {last_y})")
+            if done:
+                print(f"Episode {_} finished with reward {total_reward}.")
+                break
+            last_x, last_y, last_life = info['x_pos'], info['y_pos'], info['life']
+            state = next_state
     env.close()
