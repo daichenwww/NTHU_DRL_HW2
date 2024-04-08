@@ -105,7 +105,8 @@ class Agent(object):
         return self.last_action
             
     def choose_action(self, state):
-        if random.random() < 0.01:
+        if random.random() < 0.05:
+            return random.choice(range(12))
             return random.choice([1, 2, 5, 6, 7 ])
         else:
             with torch.no_grad():
