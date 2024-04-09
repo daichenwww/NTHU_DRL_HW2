@@ -106,8 +106,8 @@ class Agent(object):
             
     def choose_action(self, state):
         if random.random() < 0.05:
-            return random.choice(range(12))
             return random.choice([1, 2, 5, 6, 7 ])
+            # return random.choice(range(6, 12))
         else:
             with torch.no_grad():
                 q_values = self.learning_Q(state)
@@ -117,7 +117,7 @@ import time
 if __name__ == '__main__':
     agent = Agent()
     env = gym_super_mario_bros.make('SuperMarioBros-v0')
-    # env = gym.make('SuperMarioBrosRandomStages-v0', stages=[f'{w}-{s}' for w in range(1, 9) for s in range(1, 5)])
+    # env = gym.make('SuperMarioBrosRandomStages-v0', stages=[f'{w}-{s}' for w in range(1, 2) for s in range(1, 5)])
     env = JoypadSpace(env, COMPLEX_MOVEMENT)
     for _ in range(5):
         state = env.reset()
@@ -128,6 +128,8 @@ if __name__ == '__main__':
             action = agent.act(state)
             next_state, reward, done, info = env.step(action)
             env.render()
+            # sleep for 0.001 second
+            # time.sleep(0.0001)
             total_reward += reward
             if done or info['life'] < last_life:
                 print(f"Mario died at ({last_x}, {last_y})")
