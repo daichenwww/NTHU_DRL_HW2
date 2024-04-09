@@ -8,35 +8,17 @@ import numpy as np
 import random
 import os
 
+
 def frame_preprocessing(observation):
     observation = np.float32(observation)
     observation = cv2.cvtColor(observation, cv2.COLOR_RGB2GRAY)
-    observation = cv2.resize(observation, (84, 84), interpolation=cv2.INTER_AREA)
+    observation = cv2.resize(observation, (84, 84),
+                             interpolation=cv2.INTER_AREA)
     observation = observation / 255.0
     observation = np.expand_dims(observation, axis=0)
     observation = torch.tensor(observation, dtype=torch.float32)
     return observation
 
-
-class DQN(torch.nn.Module):
-    def __init__(self, input_channels=4, num_actions=12):
-        super().__init__()
-        # 4x84x84 -> 32x8x8 -> 64x4x4 -> 64x3x3 -> 512 -> num_actions
-        self.net = torch.nn.Sequential(
-            torch.nn.Conv2d(input_channels, 32, kernel_size=8, stride=4),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(32, 64, kernel_size=4, stride=2),
-            torch.nn.ReLU(),
-            torch.nn.Conv2d(64, 64, kernel_size=3, stride=1),
-            torch.nn.ReLU(),
-            torch.nn.Flatten(),
-            torch.nn.Linear(7 * 7 * 64, 512),
-            torch.nn.ReLU(),
-            torch.nn.Linear(512, num_actions)
-        )
-
-    def forward(self, x):
-        return self.net(x)
 
 class DuelingDQN(torch.nn.Module):
     def __init__(self, input_channels=4, num_actions=12):
@@ -73,68 +55,73 @@ class DuelingDQN(torch.nn.Module):
         adv_mean = advantage.mean(1, keepdim=True)
         return value + advantage - adv_mean
 
+
 class Agent(object):
-    """Agent that acts randomly."""
+
     def __init__(self):
         # load model state dict as cpu mode
         self.learning_Q = DuelingDQN(num_actions=12).to('cpu')
-        self.learning_Q.load_state_dict(torch.load(os.getcwd() + '/109062114_hw2_data', map_location='cpu'))
+        self.learning_Q.load_state_dict(torch.load( os.getcwd() + '/109062114_hw2_data', map_location='cpu'))
         self.learning_Q.eval()
-        self.state_stack = None # 4x84x84
-        self.last_action = 0
+        self.init_state = None
+        self.reset()
+
+    def reset(self):
+        self.state_stack = None
         self.frame_skip = 0
         self.time_count = 0
-        self.init_state = None
+        self.last_action = 0
 
     def act(self, observation):
         if self.init_state == None:
             self.init_state = hash(observation.tobytes())
         if self.init_state == hash(observation.tobytes()):
-            self.state_stack = None
-            self.frame_skip = 0
-            self.time_count = 0
-            self.last_action = 0
-        observation = frame_preprocessing(observation) # 1x84x84
+            self.reset()
+        observation = frame_preprocessing(observation)  # 1x84x84
         if self.frame_skip % 4 == 0:
-            if self.state_stack is None: 
+            if self.state_stack is None:
                 self.state_stack = observation
                 self.state_stack = torch.cat([self.state_stack] * 4, dim=0)
             else:
-                self.state_stack = torch.cat([self.state_stack[1:], observation], dim=0)
-            self.last_action = self.choose_action(self.state_stack.unsqueeze(0))
+                self.state_stack = torch.cat(
+                    [self.state_stack[1:], observation], dim=0)
+            self.last_action = self.choose_action(
+                self.state_stack.unsqueeze(0))
         self.frame_skip += 1
         self.time_count += 1
         return self.last_action
-            
+
     def choose_action(self, state):
         if random.random() < 0.0:
-            return random.choice([1, 2, 5, 6, 7 ])
+            return random.choice([1, 2, 5, 6, 7])
             # return random.choice(range(6, 12))
         else:
             with torch.no_grad():
                 q_values = self.learning_Q(state)
                 return torch.max(q_values, 1)[1].data.cpu().numpy()[0]
-            
-import time
+
+
 if __name__ == '__main__':
     env = gym_super_mario_bros.make('SuperMarioBros-v0')
     # env = gym.make('SuperMarioBrosRandomStages-v0', stages=[f'{w}-{s}' for w in range(1, 2) for s in range(1, 5)])
     env = JoypadSpace(env, COMPLEX_MOVEMENT)
     agent = Agent()
-    for _ in range(5):
+    for _ in range(1):
         state = env.reset()
         last_x, last_y, last_life = 0, 0, 2
         done = False
         total_reward = 0
+        last_reward = 0
         while True:
             action = agent.act(state)
             next_state, reward, done, info = env.step(action)
             env.render()
-            # sleep for 0.001 second
-            # time.sleep(0.0001)
             total_reward += reward
+            last_reward += reward
             if done or info['life'] < last_life:
-                print(f"Mario died at ({last_x}, {last_y})")
+                print(
+                    f"Mario died at ({last_x}, {last_y}), reward: {last_reward}.")
+                last_reward = 0
             if done:
                 print(f"Episode {_} finished with reward {total_reward}.")
                 break
