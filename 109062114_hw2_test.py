@@ -9,6 +9,7 @@ import random
 import os
 
 def frame_preprocessing(observation):
+    observation = np.float32(observation)
     observation = cv2.cvtColor(observation, cv2.COLOR_RGB2GRAY)
     observation = cv2.resize(observation, (84, 84), interpolation=cv2.INTER_AREA)
     observation = observation / 255.0
@@ -83,15 +84,16 @@ class Agent(object):
         self.last_action = 0
         self.frame_skip = 0
         self.time_count = 0
+        self.init_state = None
 
     def act(self, observation):
-        # if state_stack is empty, fill it with the same frame
-        if self.time_count > 4000:
+        if self.init_state == None:
+            self.init_state = hash(observation.tobytes())
+        if self.init_state == hash(observation.tobytes()):
             self.state_stack = None
             self.frame_skip = 0
             self.time_count = 0
             self.last_action = 0
-            return 0
         observation = frame_preprocessing(observation) # 1x84x84
         if self.frame_skip % 4 == 0:
             if self.state_stack is None: 
@@ -105,7 +107,7 @@ class Agent(object):
         return self.last_action
             
     def choose_action(self, state):
-        if random.random() < 0.05:
+        if random.random() < 0.0:
             return random.choice([1, 2, 5, 6, 7 ])
             # return random.choice(range(6, 12))
         else:
@@ -115,10 +117,10 @@ class Agent(object):
             
 import time
 if __name__ == '__main__':
-    agent = Agent()
     env = gym_super_mario_bros.make('SuperMarioBros-v0')
     # env = gym.make('SuperMarioBrosRandomStages-v0', stages=[f'{w}-{s}' for w in range(1, 2) for s in range(1, 5)])
     env = JoypadSpace(env, COMPLEX_MOVEMENT)
+    agent = Agent()
     for _ in range(5):
         state = env.reset()
         last_x, last_y, last_life = 0, 0, 2
